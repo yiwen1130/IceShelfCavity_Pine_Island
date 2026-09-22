@@ -70,12 +70,12 @@ function parse_command_line_arguments()
 
         "--aspect"
             help = "Horizontal-to-vertical grid aspect ratio (Δx = aspect·Δz)"
-            default = 4.0
+            default = 20
             arg_type = Float64
 
         "--dz"
             help = "Vertical grid spacing in meters"
-            default = 2.0            # matches the icecavity_dz2 production run
+            default = 10            # matches the icecavity_dz2 production run
             arg_type = Float64
 
         "--stop_time"
@@ -97,6 +97,11 @@ function parse_command_line_arguments()
             help = "Constant viscosity = diffusivity [m^2/s]. Lower (e.g. 1e-5 or 0) ⇒ less"*
                    " dissipation, closer to eddying (WENO supplies grid-scale dissipation)."
             default = 1e-4
+            arg_type = Float64
+
+        "--kappa"
+            help = "Temperature and salinity diffusivity [m^2/s]"
+            default = 5.456e-6
             arg_type = Float64
 
         "--checkpoint_interval"
@@ -374,7 +379,7 @@ model = NonhydrostaticModel(grid;
                             coriolis,
                             advection = WENO(order=5),
                             tracers = (:T, :S),
-                            closure = params.nu > 0 ? ScalarDiffusivity(ν=params.nu, κ=params.nu) : nothing,
+                            closure = params.nu > 0 ? ScalarDiffusivity(ν=1.0e-4, κ=(T = 5.456e-6, S = 5.456e-6)) : nothing,
                             forcing = (u = u_sponge, T = T_sponge, S = S_sponge),
                             pressure_solver = ConjugateGradientPoissonSolver(grid;
                                 reltol = params.cg_reltol, maxiter = params.cg_maxiter),
