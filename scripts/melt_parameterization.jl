@@ -141,3 +141,18 @@ end
 @inline melt_heat_flux_slope_3d(x, y, z, t, S, p) = -ρⁱ * Lᶠ * _mdot(x, p) / (ρʷ * cᵖʷ)
 @inline melt_salt_flux_slope_3d(x, y, z, t, S, p) = -_mdot(x, p) * S
 #---
+
+# =====================================================================================
+# Constant prescribed melt
+#
+# mdot is the ice-equivalent melt rate [m/s].
+# This is a diagnostic experiment, not a physical melt parameterization.
+# =====================================================================================
+
+@inline function constant_heat_flux(x, z, t, S, p)
+    return -ρⁱ * Lᶠ * p.mdot / (ρʷ * cᵖʷ)
+end
+
+@inline function constant_salt_flux(x, z, t, S, p)
+    return -(ρⁱ / ρʷ) * p.mdot * S
+end

@@ -18,9 +18,9 @@
 # =====================================================================================
 
 # Temperature fit  T(z) = aT + cT·tanh((z − z0T)/hT)
-const aT, cT, z0T, hT = -0.30, -1.30, -600.0, 150.0
+const aT, cT, z0T, hT = 0.30, -0.9, -390.0, 125.0
 # Salinity fit     S(z) = aS + cS·tanh((z − z0S)/hS)
-const aS, cS, z0S, hS = 34.35, -0.35, -600.0, 150.0
+const aS, cS, z0S, hS = 34.35, -0.35, -380.0, 150.0
 
 @inline T_profile(z) = aT + cT * tanh((z - z0T) / hT)
 @inline S_profile(z) = aS + cS * tanh((z - z0S) / hS)

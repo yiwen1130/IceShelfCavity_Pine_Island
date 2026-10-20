@@ -163,6 +163,16 @@ function parse_command_line_arguments()
             default = 0.0022
             arg_type = Float64
 
+        "--melt_mode"
+            help = "Melt parameterization: constant | shear | convective | combined"
+            default = "combined"
+            arg_type = String
+
+        "--melt_rate"
+            help = "Prescribed constant ice melt rate [m/yr], used in constant mode"
+            default = 10.0
+            arg_type = Float64
+
         "--melt_slope"
             help = "Basal-slope-dependent convective melt (McConnochie & Kerr): 1 = on, 0 = off (uniform)."
             default = 1
@@ -319,18 +329,49 @@ w_bcs = FieldBoundaryConditions(immersed = τʷ)
 # shear friction velocity resolution-independent (log law). Momentum drag BCs are separate.
 # Precompute the per-x basal-slope factor from the ice-base geometry (CPU, at setup) and move it
 # to the architecture; the melt kernel just indexes it by x. --melt_slope=0 disables it (all 1).
+
 Δx_grid = params.Lx / params.Nx
-sfac_cpu = map(1:params.Nx) do i
+if params.melt_mode == "constant"
+
+    seconds_per_year = 365.25 * 24 * 60 * 60
+    mdot = params.melt_rate / seconds_per_year
+
+    constant_params = (; mdot)
+
+    T_melt = FluxBoundaryCondition(
+        constant_heat_flux,
+        field_dependencies = (:S,),
+        parameters = constant_params,
+    )
+
+    S_melt = FluxBoundaryCondition(
+        constant_salt_flux,
+        field_dependencies = (:S,),
+        parameters = constant_params,
+    )
+
+    @info "Melt mode = CONSTANT" melt_rate_m_per_year=params.melt_rate
+
+elseif params.melt_mode == "combined"
+
+    sfac_cpu = map(1:params.Nx) do i
     xc = (i - 0.5) * Δx_grid; δ = 0.5Δx_grid
     dtopdx = (top_interp(xc + δ) - top_interp(xc - δ)) / (2δ)
     sinθ = abs(dtopdx) / sqrt(1 + dtopdx^2)
     params.melt_slope == 1 ? slope_factor(sinθ, params.slope_ref) : 1.0
 end
-sfac_dev = on_architecture(arch, collect(Float64, sfac_cpu))
-melt_params = (; Cd = params.melt_Cd, z1 = z₁, sfac = sfac_dev, dx = Δx_grid, Nx = params.Nx)
-@info "Melt closure = max(shear[Cd], convective[Kerr·slope])" melt_Cd=params.melt_Cd z1=z₁ slope=(params.melt_slope==1) slope_factor_range=(minimum(sfac_cpu), maximum(sfac_cpu))
-T_melt = FluxBoundaryCondition(melt_heat_flux, field_dependencies=(:u, :v, :w, :T, :S), parameters=melt_params)
-S_melt = FluxBoundaryCondition(melt_salt_flux, field_dependencies=(:u, :v, :w, :T, :S), parameters=melt_params)
+    sfac_dev = on_architecture(arch, collect(Float64, sfac_cpu))
+    melt_params = (; Cd = params.melt_Cd, z1 = z₁, sfac = sfac_dev, dx = Δx_grid, Nx = params.Nx)
+    @info "Melt closure = max(shear[Cd], convective[Kerr·slope])" melt_Cd=params.melt_Cd z1=z₁ slope=(params.melt_slope==1) slope_factor_range=(minimum(sfac_cpu), maximum(sfac_cpu))
+    T_melt = FluxBoundaryCondition(melt_heat_flux, field_dependencies=(:u, :v, :w, :T, :S), parameters=melt_params)
+    S_melt = FluxBoundaryCondition(melt_salt_flux, field_dependencies=(:u, :v, :w, :T, :S), parameters=melt_params)
+
+else
+
+    error("Unknown melt mode: $(params.melt_mode). Use constant or combined.")
+
+end
+
 
 T_bcs = FieldBoundaryConditions(immersed = ImmersedBoundaryCondition(top = T_melt),
                                 east = ValueBoundaryCondition(Tᵉ))
