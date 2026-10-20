@@ -134,6 +134,11 @@ function parse_command_line_arguments()
             default = ""
             arg_type = String
 
+        "--animdir"
+            help = "Directory for MP4 animation output"
+            default = "anims"
+            arg_type = String
+
         "--wall_time_limit"
             help = "Stop gracefully after this many HOURS of wall time (writes a checkpoint so a"*
                    " re-submit resumes). Default: no limit."
@@ -460,7 +465,12 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(40))
 
 #+++ Plotting (inline CairoMakie animation; skipped when --animate=false, e.g. big GPU runs)
 if params.animate
-animations_dir = joinpath(rundir, "anims")
+animations_dir = if isabspath(params.animdir)
+    params.animdir
+else
+    joinpath(rundir, params.animdir)
+end
+
 mkpath(animations_dir)
 
 u, v, w = model.velocities
