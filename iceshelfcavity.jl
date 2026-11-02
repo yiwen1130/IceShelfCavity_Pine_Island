@@ -418,7 +418,10 @@ u_sponge = Relaxation(rate = 1/params.τ_nudge, mask = front_sponge_mask, target
 # geometry and uses the FFT solver as a preconditioner, so a modest maxiter + looser reltol
 # keep the iteration count low (tune via --cg_reltol / --cg_maxiter). QuasiAdamsBashforth2
 # does ONE pressure solve per step vs THREE for the RK3 default — ~3× fewer CG solves.
-coriolis = FPlane(; params.f)
+
+# coriolis = FPlane(; params.f)
+coriolis = nothing
+@info "Coriolis OFF"
 model = NonhydrostaticModel(grid;
                             timestepper = :QuasiAdamsBashforth2,
                             buoyancy = buoyancy_formulation,

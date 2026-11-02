@@ -156,3 +156,11 @@ end
 @inline function constant_salt_flux(x, z, t, S, p)
     return -(ρⁱ / ρʷ) * p.mdot * S
 end
+
+@inline function constant_heat_flux_3d(x, y, z, t, S, p)
+    return -ρⁱ * Lᶠ * p.mdot / (ρʷ * cᵖʷ)
+end
+
+@inline function constant_salt_flux_3d(x, y, z, t, S, p)
+    return -(ρⁱ / ρʷ) * p.mdot * S
+end

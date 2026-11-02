@@ -2,6 +2,7 @@
 output/
 anims/
 checkpoints/
+constant_run/
 *.nc
 *.jld2
 checkpoint_*
@@ -21,3 +22,11 @@ __pycache__/
 *.pyc
 .DS_Store
 .ipynb_checkpoints/
+
+# accidental files created when command-line flags were interpreted as paths
+/--dir
+/--fps
+/--out
+/--speed-limit
+/constant_extruded_coriolis_75d
+/constant_extruded_no_coriolis_75d

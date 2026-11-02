@@ -5,6 +5,7 @@ import argparse
 from pathlib import Path
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
@@ -19,7 +20,7 @@ def main():
     parser.add_argument("--dir", default="output", help="directory containing the NetCDF file")
     parser.add_argument("--out", default=None, help="output MP4 path")
     parser.add_argument("--fps", type=int, default=12)
-    parser.add_argument("--y-exaggeration", type=float, default=8.0)
+    parser.add_argument("--y-exaggeration", type=float, default=1.0)
     parser.add_argument("--z-exaggeration", type=float, default=15.0)
     args = parser.parse_args()
 
@@ -34,13 +35,28 @@ def main():
     if missing:
         raise SystemExit(f"Missing variables: {', '.join(sorted(missing))}")
 
-    x = ds.x_caa.values / 1000.0
-    y = ds.y_aca.values / 1000.0 * args.y_exaggeration
-    z = ds.z_aac.values / 1000.0 * args.z_exaggeration
-    mask = ds["mask"].values > 0.5  # stored as (z, y, x)
-    valid_temperature = ds["T"].values[:, mask]
-    lower, upper = np.nanpercentile(valid_temperature, [2, 98])
-    if not np.isfinite(lower) or not np.isfinite(upper) or lower == upper:
+    # Physical coordinates in kilometres.
+    x = ds["x_caa"].values / 1000.0
+    y = ds["y_aca"].values / 1000.0
+    z = ds["z_aac"].values / 1000.0
+    # In the Oceananigans output:
+    #   0 = water
+    #   1 = solid
+    solid_mask = ds["mask"].values > 0.5
+
+    # Use only water cells when selecting the temperature color range.
+    valid_temperature = ds["T"].values[:, ~solid_mask]
+
+    lower, upper = np.nanpercentile(
+        valid_temperature,
+        [2, 98],
+    )
+
+    if (
+        not np.isfinite(lower)
+        or not np.isfinite(upper)
+        or lower == upper
+    ):
         lower, upper = -1.5, 1.0
 
     norm = colors.Normalize(lower, upper)
@@ -60,7 +76,7 @@ def main():
             fig.clear()
             ax = fig.add_subplot(111, projection="3d")
             temperature = ds["T"].isel(time=frame).values  # (z, y, x)
-            data = np.ma.masked_where(~mask, temperature)
+            data = np.ma.masked_where(solid_mask, temperature)
 
             ax.plot_surface(
                 np.full_like(Yx, x[ix]), Yx, Zx,
@@ -81,18 +97,28 @@ def main():
             ax.set_xlim(x.min(), x.max())
             ax.set_ylim(y.min(), y.max())
             ax.set_zlim(z.min(), z.max())
-            ax.set_box_aspect((x.ptp(), y.ptp(), z.ptp()))
-            ax.set_xlabel("x: grounding line to shelf front (km)")
+            ax.set_box_aspect((
+                np.ptp(x),
+                np.ptp(y) * args.y_exaggeration,
+                np.ptp(z) * args.z_exaggeration,
+            ))
+            ax.set_xlabel("x: grounding line to shelf front (km)",
+                          labelpad=35,)
             ax.set_ylabel(f"y (km, x{args.y_exaggeration:g})")
             ax.set_zlabel(f"z (km, x{args.z_exaggeration:g})")
-            ax.view_init(elev=25, azim=-58)
+            ax.view_init(elev=25, azim=-60)
             ax.set_title(
                 f"{args.simname}: 3-D temperature slices\n"
                 f"t = {seconds / 3600:.2f} hours   frame {frame + 1}/{frames}"
             )
             scalar = cm.ScalarMappable(norm=norm, cmap=cmap)
             fig.colorbar(scalar, ax=ax, shrink=0.65, pad=0.08, label="Temperature (°C)")
-            fig.tight_layout()
+            fig.subplots_adjust(
+                left=0.03,
+                right=0.82,
+                bottom=0.12,
+                top=0.88,
+            )
             writer.grab_frame()
 
     ds.close()
