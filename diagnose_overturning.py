@@ -30,6 +30,15 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--geometry",
+    default="data/pineislandbath.csv",
+    help=(
+        "Geometry CSV used by the run, with x_km, bathy, and topo "
+        "columns (default: data/pineislandbath.csv)"
+    ),
+)
+
+parser.add_argument(
     "--Tlim",
     type=float,
     default=0.2,
@@ -134,7 +143,33 @@ def ambient_salinity(z):
 # Read ice-base and seafloor geometry
 # ---------------------------------------------------------------------
 
-geometry = pd.read_csv("data/pineislandbath.csv")
+geometry_path = args.geometry
+
+if not os.path.exists(geometry_path):
+    data_candidate = os.path.join("data", geometry_path)
+
+    if os.path.exists(data_candidate):
+        geometry_path = data_candidate
+    else:
+        raise SystemExit(
+            f"Could not find geometry file {args.geometry}. "
+            "Pass the same CSV used by the model with --geometry."
+        )
+
+geometry = pd.read_csv(geometry_path)
+
+required_geometry_columns = {"x_km", "topo", "bathy"}
+missing_geometry_columns = required_geometry_columns.difference(
+    geometry.columns
+)
+
+if missing_geometry_columns:
+    raise SystemExit(
+        f"Geometry file {geometry_path} is missing columns: "
+        + ", ".join(sorted(missing_geometry_columns))
+    )
+
+print(f"Using geometry: {geometry_path}")
 
 geometry_x = geometry["x_km"].to_numpy() * 1000.0
 geometry_top = geometry["topo"].to_numpy()

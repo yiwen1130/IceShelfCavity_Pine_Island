@@ -10,6 +10,7 @@ logs/*.out
 logs/*.log
 *.mp4
 *.gif
+/idealized_geometry_comparison.png
 
 # resolved Julia manifest: let each machine resolve fresh (laptop vs cluster Julia differ).
 # The tested 1.10.11 manifest lives locally but is not committed; setup_casper.sh resolves

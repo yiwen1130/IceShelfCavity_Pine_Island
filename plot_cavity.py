@@ -3,10 +3,9 @@ Quick-look plot of the ice-shelf-cavity LES output: x–z sections of u, w, T an
 last output time, with the ice shelf and sea floor shaded grey.
 
 Adapted from the landfast model's plot_landfast.py. The solid region is reconstructed from
-the SAME geometry CSV the model read (data/pineislandbath.csv), so the overlay is always
-consistent with the run.
+the geometry CSV selected with ``--geometry``, so the overlay is consistent with the run.
 
-    python3 plot_cavity.py [simname] [--dir OUTDIR]      # default simname=iceshelfcavity, dir=output
+    python3 plot_cavity.py [simname] [--dir OUTDIR] [--geometry GEOMETRY.csv]
 """
 import os
 import argparse
@@ -23,11 +22,27 @@ from matplotlib import pyplot as plt
 _ap = argparse.ArgumentParser()
 _ap.add_argument("simname", nargs="?", default="iceshelfcavity")
 _ap.add_argument("--dir", default="output", help="directory holding <simname>.nc (default: output)")
+_ap.add_argument(
+    "--geometry",
+    default="data/pineislandbath.csv",
+    help=(
+        "geometry CSV used by the run, with x_km, bathy, and topo columns "
+        "(default: data/pineislandbath.csv)"
+    ),
+)
 _args = _ap.parse_args()
 simname, outdir = _args.simname, _args.dir
 
-csv_name = "pineislandbath.csv"
-csv_path = csv_name if os.path.exists(csv_name) else os.path.join("data", csv_name)
+csv_path = _args.geometry
+if not os.path.exists(csv_path):
+    data_candidate = os.path.join("data", csv_path)
+    if os.path.exists(data_candidate):
+        csv_path = data_candidate
+    else:
+        raise SystemExit(
+            f"Geometry file not found: {_args.geometry}. "
+            "Pass the same CSV used by the model with --geometry."
+        )
 
 ncfile = os.path.join(outdir, f"{simname}.nc")
 if not os.path.exists(ncfile):
